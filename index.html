@@ -1,1 +1,297 @@
-<!DOCTYPE html><html lang="en"><head>    <meta charset="UTF-8">    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">    <title>OG Hub</title>    <link rel="manifest" href="manifest.json">    <meta name="theme-color" content="#1e293b">    <meta name="apple-mobile-web-app-capable" content="yes">    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />    <meta http-equiv="Pragma" content="no-cache" />    <meta http-equiv="Expires" content="0" />    <script src="https://cdn.tailwindcss.com"></script>    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>    <style>        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #334155; -webkit-tap-highlight-color: transparent; }        .hidden-el { display: none !important; }        .fade-in { animation: fadeIn 0.3s ease-in-out; }        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }        .nav-active { color: #4f46e5; border-top: 2px solid #4f46e5; font-weight: 800; }        .nav-inactive { color: #94a3b8; border-top: 2px solid transparent; font-weight: 600; }        .modal-hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }        .modal-visible { opacity: 1; pointer-events: auto; transform: scale(1); transition: all 0.2s ease-out; }        .roster-table th { background: #f1f5f9; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; padding: 12px 8px; position: sticky; top: 0; }        .roster-table td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; }    </style></head><body class="pb-24">    <!-- ONBOARDING OVERLAY -->    <div id="onboarding-screen" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 fade-in hidden-el">        <div class="bg-white p-8 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5C8.5 4.5 5 7 5 11c0 4.5 3.5 7.5 7 7.5s7-3 7-7.5c0-4-3.5-6.5-7-6.5z"/><path d="M12 18.5v3"/><path d="M9.5 21.5h5"/></svg>            </div>                        <div id="onboard-step-1">                <h2 class="text-2xl font-black text-slate-800 mb-2">Who are you?</h2>                <p class="text-slate-500 font-medium mb-6 text-sm">Select your role to configure the app.</p>                <div class="flex flex-col gap-3">                    <button onclick="setRole('HO')" class="py-4 border-2 border-slate-100 rounded-xl font-bold text-slate-600 hover:border-pink-500 hover:bg-pink-50 transition">House Officer</button>                    <button onclick="setRole('AS')" class="py-4 border-2 border-slate-100 rounded-xl font-bold text-slate-600 hover:border-pink-500 hover:bg-pink-50 transition">Assistant Surgeon</button>                    <button onclick="setRole('None')" class="py-4 bg-slate-100 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition">None of these (View Only)</button>                </div>            </div>            <div id="onboard-step-2" class="hidden-el">                <h2 class="text-2xl font-black text-slate-800 mb-2">Select Group</h2>                <p class="text-slate-500 font-medium mb-6 text-sm">Which group do you belong to?</p>                <div id="group-buttons-container" class="grid grid-cols-2 gap-3"></div>                <button onclick="goBackOnboard()" class="mt-6 text-slate-400 font-bold text-xs underline">Go Back</button>            </div>        </div>    </div>    <!-- MAIN APP CONTAINER -->    <div class="max-w-2xl mx-auto w-full pt-6 px-4 md:px-6">                <!-- Header -->        <header class="flex justify-between items-center mb-6">            <div class="flex items-center gap-2">                <div id="admin-trigger" class="w-10 h-10 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center cursor-pointer shadow-sm">                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5C8.5 4.5 5 7 5 11c0 4.5 3.5 7.5 7 7.5s7-3 7-7.5c0-4-3.5-6.5-7-6.5z"/><path d="M12 18.5v3"/><path d="M9.5 21.5h5"/></svg>                </div>                <div>                    <h1 class="text-2xl font-black text-slate-800 tracking-tight">OG Hub</h1>                    <p id="group-badge" class="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-widest bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Group Setting</p>                </div>            </div>            <div class="flex gap-2">                <button id="install-app-btn" class="hidden-el px-3 h-10 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-sm hover:bg-indigo-500 transition flex items-center gap-1">                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>                    Install                </button>                <button onclick="showAbout()" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 shadow-sm">                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>                </button>                <button onclick="openColorModal()" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 shadow-sm">                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>                </button>            </div>        </header>        <!-- VIEW 1: DASHBOARD -->        <div id="view-dashboard" class="space-y-5 fade-in hidden-el">                        <div class="flex justify-between items-center bg-white p-2 rounded-[1.25rem] shadow-sm border border-slate-100">                <button onclick="changeDay(-1)" class="px-4 py-2 font-bold text-slate-400 hover:text-indigo-600">&larr;</button>                <div class="text-center">                    <span id="active-day-label" class="block font-black text-lg text-slate-800">Today</span>                    <span id="active-date-str" class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</span>                </div>                <button onclick="changeDay(1)" class="px-4 py-2 font-bold text-slate-400 hover:text-indigo-600">&rarr;</button>            </div>            <!-- "Your Shift" Dynamic Card -->            <div id="status-card-container" class="rounded-[2rem] p-5 shadow-sm text-white transition-colors duration-300">                <div class="flex justify-between items-start mb-4">                    <div>                        <p class="text-white/70 font-bold uppercase tracking-widest text-[10px] mb-1">Your Shift</p>                        <h2 id="status-role" class="text-4xl md:text-5xl font-black tracking-tight">Duty</h2>                    </div>                </div>                <!-- SUPER CARD: HO Group Tracker -->                <div id="card-ho-super" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 mb-4 transition-all cursor-pointer hover:bg-black/20" onclick="toggleCard('ho-super')">                    <div class="p-3 flex justify-between items-center">                        <div>                            <p class="text-white/70 font-bold uppercase tracking-widest text-[9px] mb-1">House Surgeon Groups</p>                            <div class="flex gap-3 text-xs font-bold" id="ho-overview-line">                                <!-- Populated dynamically -->                            </div>                        </div>                        <svg id="chevron-ho-super" class="w-5 h-5 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>                    </div>                    <div id="expand-ho-super" class="hidden px-4 pb-4 pt-2 border-t border-white/10 text-xs text-white space-y-3">                        <!-- Massive HO Detail Populated by JS -->                    </div>                </div>                <!-- Seniors Grid (1 + 2 + 2 Layout) -->                <div class="flex flex-col gap-2">                    <div class="grid grid-cols-2 gap-2">                        <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">                            <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Consultant (SCS)</p>                            <p id="status-scs" class="font-bold text-xs sm:text-sm leading-tight">N/A</p>                        </div>                        <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">                            <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Junior Cons. (JCS)</p>                            <p id="status-jcs" class="font-bold text-xs sm:text-sm leading-tight">N/A</p>                        </div>                    </div>                    <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">                        <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Senior Assistant Surgeon (SAS)</p>                        <p id="status-sas" class="font-bold text-sm leading-tight">N/A</p>                    </div>                    <div id="card-as" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 transition-all select-none cursor-pointer hover:bg-black/20" onclick="toggleCard('as')">                        <div class="p-3 flex justify-between items-center">                            <div>                                <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">AS Team & Ward Round</p>                                <p id="status-as" class="font-bold text-sm leading-tight">N/A</p>                            </div>                            <svg id="chevron-as" class="w-4 h-4 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>                        </div>                        <div id="expand-as" class="hidden px-3 pb-3 pt-2 border-t border-white/10 text-xs text-white/90 leading-relaxed"></div>                    </div>                    <div id="card-med" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 transition-all select-none cursor-pointer hover:bg-black/20" onclick="toggleCard('med')">                        <div class="p-3 flex justify-between items-center">                            <div>                                <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">NPTGH Med OnCall</p>                                <p id="status-med" class="font-bold text-sm leading-tight">N/A</p>                            </div>                            <svg id="chevron-med" class="w-4 h-4 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>                        </div>                        <div id="expand-med" class="hidden px-3 pb-3 pt-2 border-t border-white/10 text-xs text-white/90 leading-relaxed"></div>                    </div>                </div>            </div>            <!-- Notice for "None" users -->            <div id="none-user-notice" class="hidden-el bg-slate-100 p-6 rounded-3xl text-center border border-slate-200">                <span class="text-3xl block mb-2">👋</span>                <h3 class="font-black text-slate-800 mb-1">Viewing as Guest</h3>                <p class="text-sm text-slate-500 font-medium">Head over to the <span class="font-bold text-indigo-600">Roster</span> tab below to view the complete, scrollable ward schedule.</p>            </div>        </div>        <!-- VIEW 2: ROSTER (Calendar OR Table) -->        <div id="view-calendar" class="space-y-5 fade-in hidden-el">            <div class="flex gap-2">                <div class="flex-grow flex bg-white p-1 rounded-xl shadow-sm border border-slate-100">                    <button onclick="setCalMonth(7)" id="btn-cal-7" class="flex-1 py-2 font-bold text-sm rounded-lg bg-indigo-50 text-indigo-700">July</button>                    <button onclick="setCalMonth(8)" id="btn-cal-8" class="flex-1 py-2 font-bold text-sm rounded-lg text-slate-400">August</button>                    <button onclick="setCalMonth(9)" id="btn-cal-9" class="flex-1 py-2 font-bold text-sm rounded-lg text-slate-400">Sept</button>                </div>                <button onclick="downloadCalendar()" class="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl px-4 flex items-center justify-center font-bold text-sm shadow-sm hover:bg-emerald-100 transition">📥 DL</button>            </div>            <div id="capture-calendar-area" class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">                <h3 id="cal-download-title" class="text-center font-bold text-slate-600 mt-4 mb-2 hidden">OG Hub Roster</h3>                                <!-- CONTAINER FOR HO (GRID) -->                <div id="roster-grid-container" class="p-5 hidden-el">                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>                    </div>                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2"></div>                    <div id="calendar-legend" class="mt-6 flex flex-wrap justify-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest"></div>                </div>                <!-- CONTAINER FOR AS/NONE (MASSIVE TABLE) -->                <div id="roster-table-container" class="hidden-el overflow-x-auto w-full max-h-[600px]">                    <table class="roster-table w-full text-left border-collapse min-w-[800px]">                        <thead>                            <tr>                                <th class="z-10 bg-slate-100 border-b border-slate-200 sticky left-0 min-w-[60px]">Date</th>                                <th class="border-b border-slate-200">SCS</th>                                <th class="border-b border-slate-200">JCS</th>                                <th class="border-b border-slate-200">SAS</th>                                <th class="border-b border-slate-200 border-r border-slate-200">AS Team</th>                                <th class="text-center border-b border-slate-200">Grp A</th>                                <th class="text-center border-b border-slate-200">Grp B</th>                                <th class="text-center border-b border-slate-200">Grp C</th>                                <th class="text-center border-b border-slate-200">Grp D</th>                            </tr>                        </thead>                        <tbody id="roster-table-body">                            <!-- Populated by JS -->                        </tbody>                    </table>                </div>            </div>        </div>        <!-- VIEW 3: DIRECTORY -->        <div id="view-directory" class="space-y-5 fade-in hidden-el">            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">                <h3 class="text-lg font-black text-slate-800 mb-4">Ward Directory</h3>                <div id="dir-container" class="space-y-6"></div>            </div>        </div>        <!-- VIEW 4: ADMIN -->        <div id="view-admin" class="space-y-6 fade-in hidden-el">            <div class="bg-slate-800 p-6 rounded-[2rem] shadow-md flex justify-between items-center text-white">                <div>                    <h2 class="text-2xl font-black text-white flex items-center gap-2"><span class="text-amber-400">🔒</span> Master Database</h2>                    <p class="text-slate-400 font-bold mt-1 tracking-wide">All Groups Comparison</p>                </div>                <button onclick="closeAdmin()" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition">Lock</button>            </div>            <div id="admin-tables-container" class="space-y-6"></div>        </div>    </div>    <!-- COLOR PICKER MODAL -->    <div id="color-modal-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 modal-hidden flex items-center justify-center p-4">        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">                <h3 class="text-lg font-bold text-slate-800">Color Settings</h3>                <button onclick="closeColorModal()" class="text-slate-400 hover:text-slate-600 transition-colors">                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>                </button>            </div>            <div class="flex border-b border-slate-100">                <button onclick="switchModalTab('presets')" id="tab-presets" class="flex-1 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 bg-white">Theme Presets</button>                <button onclick="switchModalTab('custom')" id="tab-custom" class="flex-1 py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent bg-slate-50 hover:bg-slate-100">Custom Wheel</button>            </div>            <div id="content-presets" class="p-6 flex flex-col gap-3">                <button onclick="applyPreset('pastel')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Pastel Default</button>                <button onclick="applyPreset('vibrant')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Vibrant Hospital</button>                <button onclick="applyPreset('ocean')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Deep Ocean</button>                <button onclick="applyPreset('monochrome')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Monochrome</button>            </div>            <div id="content-custom" class="p-6 hidden flex flex-col gap-5">                <select id="role-selector" class="w-full p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" onchange="updateCustomPreview()">                    <option value="Duty">Duty</option><option value="Pre">Pre-Duty</option><option value="Ord">Ordinary</option>                    <option value="Off">Night Off</option><option value="Rest">Day Off</option><option value="Anes">ANA</option>                </select>                <div class="flex items-center gap-4">                    <input type="color" id="color-picker-input" class="w-14 h-14 rounded cursor-pointer border-0 p-0" oninput="updateCustomPreview()">                    <div id="custom-preview-box" class="flex-grow h-14 rounded-xl flex items-center justify-center font-bold shadow-inner">Preview</div>                </div>                <button onclick="applyCustomColor()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">Apply Custom Color</button>            </div>        </div>    </div>    <!-- BOTTOM NAVIGATION -->    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-40 pb-safe">        <div class="max-w-2xl mx-auto flex justify-around">            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-4 flex flex-col items-center gap-1 nav-active transition-colors">                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>                <span class="text-[10px] uppercase tracking-widest">Today</span>            </button>            <button onclick="switchTab('calendar')" id="tab-calendar" class="flex-1 py-4 flex flex-col items-center gap-1 nav-inactive transition-colors">                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>                <span class="text-[10px] uppercase tracking-widest">Roster</span>            </button>            <button onclick="switchTab('directory')" id="tab-directory" class="flex-1 py-4 flex flex-col items-center gap-1 nav-inactive transition-colors">                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>                <span class="text-[10px] uppercase tracking-widest">Directory</span>            </button>        </div>    </nav>    <script src="data.js"></script>    <script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OG Hub</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e293b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8fafc; color: #334155; -webkit-tap-highlight-color: transparent; }
+        .hidden-el { display: none !important; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        .nav-active { color: #4f46e5; border-top: 2px solid #4f46e5; font-weight: 800; }
+        .nav-inactive { color: #94a3b8; border-top: 2px solid transparent; font-weight: 600; }
+        .modal-hidden { opacity: 0; pointer-events: none; transform: scale(0.95); }
+        .modal-visible { opacity: 1; pointer-events: auto; transform: scale(1); transition: all 0.2s ease-out; }
+        .roster-table th { background: #f1f5f9; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; font-size: 10px; padding: 12px 8px; position: sticky; top: 0; }
+        .roster-table td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; font-size: 11px; font-weight: 600; color: #334155; white-space: nowrap; }
+    </style>
+</head>
+<body class="pb-24">
+
+    <!-- ONBOARDING OVERLAY -->
+    <div id="onboarding-screen" class="fixed inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center p-6 fade-in hidden-el">
+        <div class="bg-white p-8 rounded-[2rem] w-full max-w-sm text-center shadow-2xl">
+            <div class="w-16 h-16 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5C8.5 4.5 5 7 5 11c0 4.5 3.5 7.5 7 7.5s7-3 7-7.5c0-4-3.5-6.5-7-6.5z"/><path d="M12 18.5v3"/><path d="M9.5 21.5h5"/></svg>
+            </div>
+            
+            <div id="onboard-step-1">
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Who are you?</h2>
+                <p class="text-slate-500 font-medium mb-6 text-sm">Select your role to configure the app.</p>
+                <div class="flex flex-col gap-3">
+                    <button onclick="setRole('HO')" class="py-4 border-2 border-slate-100 rounded-xl font-bold text-slate-600 hover:border-pink-500 hover:bg-pink-50 transition">House Officer</button>
+                    <button onclick="setRole('AS')" class="py-4 border-2 border-slate-100 rounded-xl font-bold text-slate-600 hover:border-pink-500 hover:bg-pink-50 transition">Assistant Surgeon</button>
+                    <button onclick="setRole('None')" class="py-4 bg-slate-100 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition">None of these (View Only)</button>
+                </div>
+            </div>
+
+            <div id="onboard-step-2" class="hidden-el">
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Select Group</h2>
+                <p class="text-slate-500 font-medium mb-6 text-sm">Which group do you belong to?</p>
+                <div id="group-buttons-container" class="grid grid-cols-2 gap-3"></div>
+                <button onclick="goBackOnboard()" class="mt-6 text-slate-400 font-bold text-xs underline">Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN APP CONTAINER -->
+    <div class="max-w-2xl mx-auto w-full pt-6 px-4 md:px-6">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-2">
+                <div id="admin-trigger" class="w-10 h-10 bg-pink-100 text-pink-600 rounded-full flex items-center justify-center cursor-pointer shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4.5C8.5 4.5 5 7 5 11c0 4.5 3.5 7.5 7 7.5s7-3 7-7.5c0-4-3.5-6.5-7-6.5z"/><path d="M12 18.5v3"/><path d="M9.5 21.5h5"/></svg>
+                </div>
+                <div>
+                    <h1 class="text-2xl font-black text-slate-800 tracking-tight">OG Hub</h1>
+                    <p id="group-badge" class="inline-block mt-0.5 text-[10px] font-bold uppercase tracking-widest bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Group Setting</p>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button id="install-app-btn" class="hidden-el px-3 h-10 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-sm hover:bg-indigo-500 transition flex items-center gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                    Install App
+                </button>
+                <button onclick="showAbout()" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
+                <button onclick="openColorModal()" class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- VIEW 1: DASHBOARD -->
+        <div id="view-dashboard" class="space-y-5 fade-in hidden-el">
+            
+            <div class="flex justify-between items-center bg-white p-2 rounded-[1.25rem] shadow-sm border border-slate-100">
+                <button onclick="changeDay(-1)" class="px-4 py-2 font-bold text-slate-400 hover:text-indigo-600">&larr;</button>
+                <div class="text-center">
+                    <span id="active-day-label" class="block font-black text-lg text-slate-800">Today</span>
+                    <span id="active-date-str" class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Date</span>
+                </div>
+                <button onclick="changeDay(1)" class="px-4 py-2 font-bold text-slate-400 hover:text-indigo-600">&rarr;</button>
+            </div>
+
+            <!-- "Your Shift" Dynamic Card -->
+            <div id="status-card-container" class="rounded-[2rem] p-5 shadow-sm text-white transition-colors duration-300">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <p class="text-white/70 font-bold uppercase tracking-widest text-[10px] mb-1">Your Shift</p>
+                        <h2 id="status-role" class="text-4xl md:text-5xl font-black tracking-tight">Duty</h2>
+                    </div>
+                </div>
+
+                <!-- SUPER CARD: HO Group Tracker -->
+                <div id="card-ho-super" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 mb-4 transition-all cursor-pointer hover:bg-black/20" onclick="toggleCard('ho-super')">
+                    <div class="p-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-white/70 font-bold uppercase tracking-widest text-[9px] mb-1">House Surgeon Groups</p>
+                            <div class="flex gap-3 text-xs font-bold" id="ho-overview-line">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <svg id="chevron-ho-super" class="w-5 h-5 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                    </div>
+                    <div id="expand-ho-super" class="hidden px-4 pb-4 pt-2 border-t border-white/10 text-xs text-white space-y-3">
+                        <!-- Massive HO Detail Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Seniors Grid (1 + 2 + 2 Layout) -->
+                <div class="flex flex-col gap-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">
+                            <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Consultant (SCS)</p>
+                            <p id="status-scs" class="font-bold text-xs sm:text-sm leading-tight">N/A</p>
+                        </div>
+                        <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">
+                            <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Junior Cons. (JCS)</p>
+                            <p id="status-jcs" class="font-bold text-xs sm:text-sm leading-tight">N/A</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 p-3">
+                        <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">Senior Assistant Surgeon (SAS)</p>
+                        <p id="status-sas" class="font-bold text-sm leading-tight">N/A</p>
+                    </div>
+
+                    <div id="card-as" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 transition-all select-none cursor-pointer hover:bg-black/20" onclick="toggleCard('as')">
+                        <div class="p-3 flex justify-between items-center">
+                            <div>
+                                <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">AS Team & Ward Round</p>
+                                <p id="status-as" class="font-bold text-sm leading-tight">N/A</p>
+                            </div>
+                            <svg id="chevron-as" class="w-4 h-4 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        <div id="expand-as" class="hidden px-3 pb-3 pt-2 border-t border-white/10 text-xs text-white/90 leading-relaxed"></div>
+                    </div>
+
+                    <div id="card-med" class="bg-black/10 backdrop-blur-sm rounded-2xl border border-white/10 transition-all select-none cursor-pointer hover:bg-black/20" onclick="toggleCard('med')">
+                        <div class="p-3 flex justify-between items-center">
+                            <div>
+                                <p class="text-white/70 text-[9px] font-bold uppercase tracking-wider mb-1">NPTGH Med OnCall</p>
+                                <p id="status-med" class="font-bold text-sm leading-tight">N/A</p>
+                            </div>
+                            <svg id="chevron-med" class="w-4 h-4 text-white/50 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                        </div>
+                        <div id="expand-med" class="hidden px-3 pb-3 pt-2 border-t border-white/10 text-xs text-white/90 leading-relaxed"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Notice for "None" users -->
+            <div id="none-user-notice" class="hidden-el bg-slate-100 p-6 rounded-3xl text-center border border-slate-200">
+                <span class="text-3xl block mb-2">👋</span>
+                <h3 class="font-black text-slate-800 mb-1">Viewing as Guest</h3>
+                <p class="text-sm text-slate-500 font-medium">Head over to the <span class="font-bold text-indigo-600">Roster</span> tab below to view the complete, scrollable ward schedule.</p>
+            </div>
+        </div>
+
+        <!-- VIEW 2: ROSTER (Calendar OR Table) -->
+        <div id="view-calendar" class="space-y-5 fade-in hidden-el">
+            <div class="flex gap-2">
+                <div class="flex-grow flex bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                    <button onclick="setCalMonth(7)" id="btn-cal-7" class="flex-1 py-2 font-bold text-sm rounded-lg bg-indigo-50 text-indigo-700">July</button>
+                    <button onclick="setCalMonth(8)" id="btn-cal-8" class="flex-1 py-2 font-bold text-sm rounded-lg text-slate-400">August</button>
+                    <button onclick="setCalMonth(9)" id="btn-cal-9" class="flex-1 py-2 font-bold text-sm rounded-lg text-slate-400">Sept</button>
+                </div>
+                <button onclick="downloadCalendar()" class="bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl px-4 flex items-center justify-center font-bold text-sm shadow-sm hover:bg-emerald-100 transition">📥 DL</button>
+            </div>
+
+            <div id="capture-calendar-area" class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden relative">
+                <h3 id="cal-download-title" class="text-center font-bold text-slate-600 mt-4 mb-2 hidden">OG Hub Roster</h3>
+                
+                <!-- CONTAINER FOR HO (GRID) -->
+                <div id="roster-grid-container" class="p-5 hidden-el">
+                    <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 uppercase mb-3 tracking-wider">
+                        <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+                    </div>
+                    <div id="calendar-grid" class="grid grid-cols-7 gap-1 md:gap-2"></div>
+                    <div id="calendar-legend" class="mt-6 flex flex-wrap justify-center gap-3 text-[9px] font-bold text-slate-400 uppercase tracking-widest"></div>
+                </div>
+
+                <!-- CONTAINER FOR AS/NONE (MASSIVE TABLE) -->
+                <div id="roster-table-container" class="hidden-el overflow-x-auto w-full max-h-[600px]">
+                    <table class="roster-table w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr>
+                                <th class="z-10 bg-slate-100 border-b border-slate-200 sticky left-0 min-w-[60px]">Date</th>
+                                <th class="border-b border-slate-200">SCS</th>
+                                <th class="border-b border-slate-200">JCS</th>
+                                <th class="border-b border-slate-200">SAS</th>
+                                <th class="border-b border-slate-200 border-r border-slate-200">AS Team</th>
+                                <th class="text-center border-b border-slate-200">Grp A</th>
+                                <th class="text-center border-b border-slate-200">Grp B</th>
+                                <th class="text-center border-b border-slate-200">Grp C</th>
+                                <th class="text-center border-b border-slate-200">Grp D</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roster-table-body">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: DIRECTORY -->
+        <div id="view-directory" class="space-y-5 fade-in hidden-el">
+            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                <h3 class="text-lg font-black text-slate-800 mb-4">Ward Directory</h3>
+                <div id="dir-container" class="space-y-6"></div>
+            </div>
+        </div>
+
+        <!-- VIEW 4: ADMIN -->
+        <div id="view-admin" class="space-y-6 fade-in hidden-el">
+            <div class="bg-slate-800 p-6 rounded-[2rem] shadow-md flex justify-between items-center text-white">
+                <div>
+                    <h2 class="text-2xl font-black text-white flex items-center gap-2"><span class="text-amber-400">🔒</span> Master Database</h2>
+                    <p class="text-slate-400 font-bold mt-1 tracking-wide">All Groups Comparison</p>
+                </div>
+                <button onclick="closeAdmin()" class="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl font-bold text-sm transition">Lock</button>
+            </div>
+            <div id="admin-tables-container" class="space-y-6"></div>
+        </div>
+    </div>
+
+    <!-- COLOR PICKER MODAL -->
+    <div id="color-modal-backdrop" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 modal-hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-bold text-slate-800">Color Settings</h3>
+                <button onclick="closeColorModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+            <div class="flex border-b border-slate-100">
+                <button onclick="switchModalTab('presets')" id="tab-presets" class="flex-1 py-3 text-sm font-bold text-indigo-600 border-b-2 border-indigo-600 bg-white">Theme Presets</button>
+                <button onclick="switchModalTab('custom')" id="tab-custom" class="flex-1 py-3 text-sm font-bold text-slate-400 border-b-2 border-transparent bg-slate-50 hover:bg-slate-100">Custom Wheel</button>
+            </div>
+            <div id="content-presets" class="p-6 flex flex-col gap-3">
+                <button onclick="applyPreset('pastel')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Pastel Default</button>
+                <button onclick="applyPreset('vibrant')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Vibrant Hospital</button>
+                <button onclick="applyPreset('hospital')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Hospital Shift</button>
+                <button onclick="applyPreset('nightshift')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Night Shift</button>
+                <button onclick="applyPreset('sunrise')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Sunrise Ward</button>
+                <button onclick="applyPreset('ocean')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Deep Ocean</button>
+                <button onclick="applyPreset('monochrome')" class="p-4 rounded-xl border border-slate-200 hover:border-indigo-400 text-left font-bold text-slate-700">Monochrome</button>
+            </div>
+            <div id="content-custom" class="p-6 hidden flex flex-col gap-5">
+                <select id="role-selector" class="w-full p-3 rounded-xl border border-slate-200 font-bold text-slate-700 bg-white" onchange="updateCustomPreview()">
+                    <option value="Duty">Duty</option><option value="Pre">Pre-Duty</option><option value="Ord">Ordinary</option>
+                    <option value="Off">Night Off</option><option value="Rest">Day Off</option><option value="Anes">ANA</option>
+                </select>
+                <div class="flex items-center gap-4">
+                    <input type="color" id="color-picker-input" class="w-14 h-14 rounded cursor-pointer border-0 p-0" oninput="updateCustomPreview()">
+                    <div id="custom-preview-box" class="flex-grow h-14 rounded-xl flex items-center justify-center font-bold shadow-inner">Preview</div>
+                </div>
+                <button onclick="applyCustomColor()" class="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700">Apply Custom Color</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM NAVIGATION -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-40 pb-safe">
+        <div class="max-w-2xl mx-auto flex justify-around">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="flex-1 py-4 flex flex-col items-center gap-1 nav-active transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                <span class="text-[10px] uppercase tracking-widest">Today</span>
+            </button>
+            <button onclick="switchTab('calendar')" id="tab-calendar" class="flex-1 py-4 flex flex-col items-center gap-1 nav-inactive transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                <span class="text-[10px] uppercase tracking-widest">Roster</span>
+            </button>
+            <button onclick="switchTab('directory')" id="tab-directory" class="flex-1 py-4 flex flex-col items-center gap-1 nav-inactive transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                <span class="text-[10px] uppercase tracking-widest">Directory</span>
+            </button>
+        </div>
+    </nav>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

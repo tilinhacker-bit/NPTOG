@@ -2,7 +2,8 @@
 // OG HUB - APP LOGIC
 // ==========================================
 
-let userGroup = localStorage.getItem('userGroup');
+let userType = localStorage.getItem('userType'); // 'HO', 'AS', 'Other'
+let userGroup = localStorage.getItem('userGroup'); // 'A', '1', etc.
 let currentTab = 'dashboard';
 let dateOffset = 0; 
 let isAdminUnlocked = false;
@@ -53,10 +54,10 @@ function showAbout() {
 
 // --- INITIALIZATION ---
 function init() {
-    if (!userGroup) {
+    if (!userType) {
         document.getElementById('onboarding-screen').classList.remove('hidden-el');
     } else {
-        document.getElementById('group-badge').innerText = `Group ${userGroup}`;
+        setBadges();
         generateRosterData();
         updateDashboard();
         renderDirectory();
@@ -65,15 +66,46 @@ function init() {
     setupAdminTrigger();
 }
 
-function setGroup(g) {
+// --- ONBOARDING FLOW ---
+let tempRole = null;
+function selectRole(type) {
+    tempRole = type;
+    document.getElementById('onboarding-step1').classList.add('hidden-el');
+    
+    if (type === 'HO') {
+        document.getElementById('onboarding-step2-ho').classList.remove('hidden-el');
+    } else if (type === 'AS') {
+        document.getElementById('onboarding-step2-as').classList.remove('hidden-el');
+    } else {
+        // 'Other' bypasses group selection
+        setFinalGroup('None');
+    }
+}
+
+function goBackToStep1() {
+    document.getElementById('onboarding-step2-ho').classList.add('hidden-el');
+    document.getElementById('onboarding-step2-as').classList.add('hidden-el');
+    document.getElementById('onboarding-step1').classList.remove('hidden-el');
+}
+
+function setFinalGroup(g) {
+    userType = tempRole;
     userGroup = g;
-    localStorage.setItem('userGroup', g);
+    localStorage.setItem('userType', userType);
+    localStorage.setItem('userGroup', userGroup);
     document.getElementById('onboarding-screen').classList.add('hidden-el');
-    document.getElementById('group-badge').innerText = `Group ${userGroup}`;
+    
+    setBadges();
     generateRosterData();
     updateDashboard();
     renderDirectory();
-    switchTab('dashboard');
+    switchTab(userType === 'Other' ? 'calendar' : 'dashboard');
+}
+
+function setBadges() {
+    let badgeText = userType;
+    if (userType !== 'Other') badgeText += ` Gp-${userGroup}`;
+    document.getElementById('group-badge').innerText = badgeText;
 }
 
 // --- ROSTER DATA GENERATOR ---
@@ -138,22 +170,23 @@ function resetCard(id, mainText, hasContent, expandHtml = "") {
     const expandDiv = document.getElementById(`expand-${id}`);
 
     expandDiv.classList.add('hidden');
-    chevron.style.transform = 'rotate(0deg)';
+    if(chevron) chevron.style.transform = 'rotate(0deg)';
 
     if (hasContent) {
         card.classList.add('cursor-pointer', 'hover:bg-black/20');
-        chevron.classList.remove('hidden');
+        if(chevron) chevron.classList.remove('hidden');
         expandDiv.innerHTML = expandHtml;
     } else {
         card.classList.remove('cursor-pointer', 'hover:bg-black/20');
-        chevron.classList.add('hidden');
+        if(chevron) chevron.classList.add('hidden');
         expandDiv.innerHTML = "";
     }
 }
 
 function formatPhoneLink(phoneStr) {
-    const clean = phoneStr.replace(/[^0-9]/g, '');
-    return `<a href="tel:${clean}" class="font-bold text-white hover:underline">${phoneStr}</a>`;
+    if(!phoneStr) return "";
+    const clean = String(phoneStr).replace(/[^0-9]/g, '');
+    return `<a href="tel:${clean}" class="font-bold hover:underline">${phoneStr}</a>`;
 }
 
 // --- DASHBOARD (BIG TODAY) ---
@@ -182,25 +215,42 @@ function updateDashboard() {
     const m = baseDate.getMonth() + 1;
     const d = baseDate.getDate();
     const dateStr = `2026-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    
+    const dailyData = DATA.dailyInfo[dateStr];
     const rosterDay = masterRoster.find(r => r.month === m && r.d === d);
+    
     const card = document.getElementById('status-card');
     const roleTitle = document.getElementById('status-role');
     
+    // Logic for "Other" Users
+    if (userType === 'Other') {
+        card.classList.add('hidden-el');
+        document.getElementById('other-disclaimer').classList.remove('hidden-el');
+        return;
+    } else {
+        card.classList.remove('hidden-el');
+        document.getElementById('other-disclaimer').classList.add('hidden-el');
+    }
+    
+    // User Role Coloring
+    let currentRole = "Off";
     if (rosterDay) {
-        const role = rosterDay.roles[userGroup];
-        const c = theme[role];
+        if (userType === 'HO') {
+            currentRole = rosterDay.roles[userGroup];
+        } else if (userType === 'AS') {
+            if (dailyData && dailyData.AS === "Group " + userGroup) currentRole = "Duty";
+            else currentRole = "Off";
+        }
         
+        const c = theme[currentRole] || theme['Off'];
         card.style.backgroundColor = c.bg;
         card.style.color = c.text;
-        roleTitle.innerText = labels[role];
+        roleTitle.innerText = labels[currentRole] || currentRole;
         
-        // Update Mini HO Tracker
         ['A', 'B', 'C', 'D'].forEach(g => {
             document.getElementById(`hs-val-${g}`).innerText = labels[rosterDay.roles[g]];
         });
 
-        // Build the Expanded HO Card
+        // Expandable HO
         let hoHtml = "";
         roleOrder.forEach(r => {
             let groupsInRole = ['A','B','C','D'].filter(g => rosterDay.roles[g] === r);
@@ -210,9 +260,9 @@ function updateDashboard() {
                 groupsInRole.forEach(g => {
                     DATA.hoGroups[g].forEach(ho => {
                         hoHtml += `
-                        <div class="mb-1.5 ml-1 flex justify-between items-center pr-2">
-                            <div class="font-bold text-[11px] sm:text-xs text-white">${ho.name}</div>
-                            <div class="text-[10px] text-white/80">📱 - ${formatPhoneLink(ho.phone)}</div>
+                        <div class="mb-1.5 ml-1 flex justify-between items-center w-full">
+                            <div class="font-bold text-[11px] sm:text-xs text-white text-left truncate flex-grow pr-2">${ho.name}</div>
+                            <div class="text-[10px] text-white/90 shrink-0 text-right">📱 ${formatPhoneLink(ho.phone)}</div>
                         </div>`;
                     });
                 });
@@ -232,9 +282,6 @@ function updateDashboard() {
         document.getElementById(`chevron-ho`).classList.add('hidden');
     }
 
-    // Populate Seniors
-    const dailyData = DATA.dailyInfo[dateStr];
-    
     if (dailyData) {
         resetCard('scs', dailyData.SCS !== "-" ? dailyData.SCS : "N/A", false);
         resetCard('jcs', dailyData.JCS !== "-" ? dailyData.JCS : "N/A", false);
@@ -247,13 +294,13 @@ function updateDashboard() {
         
         if (dailyData.AS && dailyData.AS !== "N/A" && DATA.asGroups[dailyData.AS]) {
             asHasInfo = true;
-            shortAs = dailyData.AS;
+            shortAs = dailyData.AS_short || dailyData.AS;
             asHtml += `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-2 block border-b border-white/20 pb-1">Duty Team - ${dailyData.AS}</span>`;
             DATA.asGroups[dailyData.AS].forEach(asDoc => {
                 asHtml += `
-                <div class="mb-2 ml-1 flex justify-between items-center pr-2">
-                    <div class="font-bold text-[11px] sm:text-xs text-white">AS ${asDoc.name}</div>
-                    <div class="text-[10px] text-white/80">📱 - ${formatPhoneLink(asDoc.phone)}</div>
+                <div class="mb-2 ml-1 flex justify-between items-center w-full">
+                    <div class="font-bold text-[11px] sm:text-xs text-white text-left truncate flex-grow pr-2">AS ${asDoc.name}</div>
+                    <div class="text-[10px] text-white/90 shrink-0 text-right whitespace-nowrap">📱 ${formatPhoneLink(asDoc.phone)}</div>
                 </div>`;
             });
         }
@@ -272,7 +319,7 @@ function updateDashboard() {
 
         // Medical OnCall
         let medHasInfo = !!dailyData.Med_phone;
-        let medHtml = dailyData.Med_phone ? `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-1.5 block border-b border-white/20 pb-1">Contact Details:</span><div class="ml-1 text-[11px] sm:text-xs">📱 - ${formatPhoneLink(dailyData.Med_phone)}</div>` : "";
+        let medHtml = dailyData.Med_phone ? `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-1.5 block border-b border-white/20 pb-1">Contact Details:</span><div class="ml-1 text-[11px] sm:text-xs text-right w-full">📱 ${formatPhoneLink(dailyData.Med_phone)}</div>` : "";
         resetCard('med', dailyData.Med_name || "N/A", medHasInfo, medHtml);
 
     } else {
@@ -284,7 +331,7 @@ function updateDashboard() {
     }
 }
 
-// --- CALENDAR VIEW ---
+// --- CALENDAR VIEW (FULL ROSTER TABLE OR PERSONAL GRID) ---
 function setCalMonth(m) {
     calMonth = m;
     [7,8,9].forEach(x => {
@@ -296,36 +343,87 @@ function setCalMonth(m) {
 }
 
 function renderCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    grid.innerHTML = '';
-    
-    const padding = new Date(2026, calMonth - 1, 1).getDay();
-    for (let i = 0; i < padding; i++) {
-        grid.innerHTML += `<div class="bg-transparent"></div>`;
-    }
-
-    masterRoster.filter(d => d.month === calMonth).forEach(day => {
-        const role = day.roles[userGroup];
-        const c = theme[role];
-        
-        grid.innerHTML += `
-            <div class="flex flex-col items-center justify-center py-2 rounded-xl shadow-sm border border-black/5" style="background-color: ${c.bg}; color: ${c.text}">
-                <span class="text-sm font-black">${day.d}</span>
-                <span class="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-90">${labels[role]}</span>
-            </div>
-        `;
-    });
-    
+    const personalContainer = document.getElementById('personal-calendar-container');
+    const fullTableContainer = document.getElementById('full-table-container');
     const legend = document.getElementById('calendar-legend');
-    legend.innerHTML = Object.keys(labels).map(k => `
-        <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded shadow-sm border border-black/5" style="background-color: ${theme[k].bg}"></div><span style="color: ${theme[k].text === '#ffffff' ? theme[k].bg : theme[k].text}">${labels[k]}</span></div>
-    `).join('');
+    
+    if (userType === 'HO') {
+        // Show Personal Grid for HO
+        personalContainer.classList.remove('hidden-el');
+        fullTableContainer.classList.add('hidden-el');
+        
+        const grid = document.getElementById('calendar-grid');
+        grid.innerHTML = '';
+        
+        const padding = new Date(2026, calMonth - 1, 1).getDay();
+        for (let i = 0; i < padding; i++) {
+            grid.innerHTML += `<div class="bg-transparent"></div>`;
+        }
+
+        masterRoster.filter(d => d.month === calMonth).forEach(day => {
+            const role = day.roles[userGroup];
+            const c = theme[role] || theme['Off'];
+            
+            grid.innerHTML += `
+                <div class="flex flex-col items-center justify-center py-2 rounded-xl shadow-sm border border-black/5" style="background-color: ${c.bg}; color: ${c.text}">
+                    <span class="text-sm font-black">${day.d}</span>
+                    <span class="text-[8px] font-bold uppercase tracking-widest mt-0.5 opacity-90">${labels[role] || role}</span>
+                </div>
+            `;
+        });
+        
+        legend.innerHTML = Object.keys(labels).map(k => `
+            <div class="flex items-center gap-1.5"><div class="w-3 h-3 rounded shadow-sm border border-black/5" style="background-color: ${theme[k].bg}"></div><span style="color: ${theme[k].text === '#ffffff' ? theme[k].bg : theme[k].text}">${labels[k]}</span></div>
+        `).join('');
+
+    } else {
+        // Show Full Table for AS and View-Only
+        personalContainer.classList.add('hidden-el');
+        fullTableContainer.classList.remove('hidden-el');
+        
+        const tbody = document.getElementById('roster-table-body');
+        let html = '';
+        const daysInMonth = new Date(2026, calMonth, 0).getDate();
+        
+        for(let d=1; d<=daysInMonth; d++) {
+            const dateStr = `2026-${String(calMonth).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+            const daily = DATA.dailyInfo[dateStr] || { SCS: "-", JCS: "-", SAS: "-", AS_short: "-", AS: "-" };
+            const rDay = masterRoster.find(r => r.month === calMonth && r.d === d);
+            
+            let asText = daily.AS_short || daily.AS || "-";
+            if(asText && asText.includes('Group')) asText = asText.replace('Group ', 'Gp ');
+            
+            const rA = rDay ? rDay.roles['A'] : '-';
+            const rB = rDay ? rDay.roles['B'] : '-';
+            const rC = rDay ? rDay.roles['C'] : '-';
+            const rD = rDay ? rDay.roles['D'] : '-';
+            
+            const shortLabels = { 'Duty': 'D', 'Pre': 'P', 'Ord': 'O', 'Off': 'N', 'Rest': 'R', 'Anes': 'A' };
+            
+            html += `<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                <td class="p-2 border border-slate-100 text-xs font-bold text-slate-700 text-center">${d}</td>
+                <td class="p-2 border border-slate-100 text-[10px] text-slate-600 text-center">${(daily.SCS||"-").replace('Dr. ', '')}</td>
+                <td class="p-2 border border-slate-100 text-[10px] text-slate-600 text-center">${(daily.JCS||"-").replace('Dr. ', '')}</td>
+                <td class="p-2 border border-slate-100 text-[10px] text-slate-600 text-center">${(daily.SAS||"-").replace('Dr. ', '')}</td>
+                <td class="p-2 border border-slate-100 text-[10px] font-bold text-indigo-600 text-center">${asText}</td>
+                <td class="p-2 border border-slate-100 text-[10px] font-bold text-center" style="background-color: ${theme[rA]?.bg || '#fff'}; color: ${theme[rA]?.text || '#000'}">${shortLabels[rA] || '-'}</td>
+                <td class="p-2 border border-slate-100 text-[10px] font-bold text-center" style="background-color: ${theme[rB]?.bg || '#fff'}; color: ${theme[rB]?.text || '#000'}">${shortLabels[rB] || '-'}</td>
+                <td class="p-2 border border-slate-100 text-[10px] font-bold text-center" style="background-color: ${theme[rC]?.bg || '#fff'}; color: ${theme[rC]?.text || '#000'}">${shortLabels[rC] || '-'}</td>
+                <td class="p-2 border border-slate-100 text-[10px] font-bold text-center" style="background-color: ${theme[rD]?.bg || '#fff'}; color: ${theme[rD]?.text || '#000'}">${shortLabels[rD] || '-'}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+
+        legend.innerHTML = Object.keys(labels).map(k => `
+            <div class="flex items-center gap-1"><div class="w-2 h-2 rounded" style="background-color: ${theme[k].bg}"></div><span class="text-slate-500">${labels[k]}</span></div>
+        `).join('');
+    }
 }
 
 function downloadCalendar() {
     const titleEl = document.getElementById('cal-download-title');
     titleEl.classList.remove('hidden'); 
-    titleEl.innerText = `OG Hub Roster - Group ${userGroup} (Month ${calMonth})`;
+    titleEl.innerText = `OG Hub Roster (Month ${calMonth})`;
     
     const targetElement = document.getElementById('capture-calendar-area');
     
@@ -335,7 +433,7 @@ function downloadCalendar() {
         useCORS: true
     }).then(canvas => {
         const link = document.createElement('a');
-        link.download = `OG-Hub-Group-${userGroup}-Month-${calMonth}.png`;
+        link.download = `OG-Hub-Roster-Month-${calMonth}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
         
@@ -357,9 +455,9 @@ function renderDirectory() {
                             <h5 class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">${sub.name}</h5>
                             <div class="space-y-2">`;
                 sub.contacts.forEach(c => {
-                    html += `<div class="flex justify-between items-center">
-                                <span class="font-bold text-slate-700 text-xs">${c.name}</span>
-                                ${c.phone ? `<a href="tel:${c.phone.replace(/[^0-9]/g, '')}" class="font-bold text-indigo-600 text-[10px] sm:text-xs bg-white px-2 py-1 rounded shadow-sm">📱 ${c.phone}</a>` : ''}
+                    html += `<div class="flex justify-between items-center w-full">
+                                <span class="font-bold text-slate-700 text-xs truncate flex-grow pr-2 text-left">${c.name}</span>
+                                ${c.phone ? `<a href="tel:${String(c.phone).replace(/[^0-9]/g, '')}" class="shrink-0 font-bold text-indigo-600 text-[10px] sm:text-xs bg-white px-2 py-1 rounded shadow-sm whitespace-nowrap text-right">📱 ${c.phone}</a>` : ''}
                              </div>`;
                 });
                 html += `</div></div>`;

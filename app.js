@@ -114,7 +114,7 @@ function generateRosterData() {
 // --- DASHBOARD EXPAND LOGIC ---
 function toggleCard(id) {
     const card = document.getElementById(`card-${id}`);
-    if (!card.classList.contains('cursor-pointer')) return; // Ignore if no extra content
+    if (!card.classList.contains('cursor-pointer')) return; 
 
     const expandDiv = document.getElementById(`expand-${id}`);
     const chevron = document.getElementById(`chevron-${id}`);
@@ -135,7 +135,6 @@ function resetCard(id, mainText, hasContent, expandHtml = "") {
     const chevron = document.getElementById(`chevron-${id}`);
     const expandDiv = document.getElementById(`expand-${id}`);
 
-    // Always reset to hidden initially when changing days
     expandDiv.classList.add('hidden');
     chevron.style.transform = 'rotate(0deg)';
 
@@ -197,17 +196,23 @@ function updateDashboard() {
         card.style.backgroundColor = c.bg;
         card.style.color = c.text;
         roleTitle.innerText = labels[role];
+        
+        // Update the 4 House Surgeon Grid boxes above the seniors
+        ['A', 'B', 'C', 'D'].forEach(g => {
+            const r = rosterDay.roles[g];
+            document.getElementById(`hs-val-${g}`).innerText = labels[r];
+        });
     } else {
         card.style.backgroundColor = '#e2e8f0';
         card.style.color = '#1e293b';
         roleTitle.innerText = "Out of Range";
+        ['A', 'B', 'C', 'D'].forEach(g => document.getElementById(`hs-val-${g}`).innerText = "-");
     }
 
-    // Populate Rows
+    // Populate Seniors
     const dailyData = DATA.dailyInfo[dateStr];
     
     if (dailyData) {
-        // SCS, JCS, SAS (No extra info currently mapped, so no expand)
         resetCard('scs', dailyData.SCS !== "-" ? dailyData.SCS : "N/A", false);
         resetCard('jcs', dailyData.JCS !== "-" ? dailyData.JCS : "N/A", false);
         resetCard('sas', dailyData.SAS !== "-" ? dailyData.SAS : "N/A", false);
@@ -216,23 +221,25 @@ function updateDashboard() {
         let asHasInfo = !!(dailyData.AS_full || dailyData.WR);
         let asHtml = "";
         if (dailyData.AS_full) {
-            asHtml += `<span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-0.5 block">Full Duty Team:</span>${dailyData.AS_full}`;
+            asHtml += `<span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Full Team:</span><div class="space-y-1.5 mb-2">${dailyData.AS_full}</div>`;
         }
         if (dailyData.WR) {
             asHtml += `<div class="mt-2 pt-2 border-t border-white/10">
-                <span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-0.5 block">Ward Round Duty:</span>
-                Post-op: <span class="font-bold">${dailyData.WR.postop}</span> &nbsp;&nbsp;|&nbsp;&nbsp; PN: <span class="font-bold">${dailyData.WR.pn}</span>
+                <span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Ward Round Duty:</span>
+                <div class="flex flex-col gap-0.5 text-xs">
+                    <span>Post-op: <span class="font-bold">${dailyData.WR.postop}</span></span>
+                    <span>PN: <span class="font-bold">${dailyData.WR.pn}</span></span>
+                </div>
             </div>`;
         }
         resetCard('as', dailyData.AS_short, asHasInfo, asHtml);
 
         // Medical OnCall
         let medHasInfo = !!dailyData.Med_phone;
-        let medHtml = dailyData.Med_phone ? formatPhones(dailyData.Med_phone) : "";
+        let medHtml = dailyData.Med_phone ? `<span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Contact:</span>` + formatPhones(dailyData.Med_phone) : "";
         resetCard('med', dailyData.Med_name || "N/A", medHasInfo, medHtml);
 
     } else {
-        // Not in data
         resetCard('scs', "TBD", false);
         resetCard('jcs', "TBD", false);
         resetCard('sas', "TBD", false);

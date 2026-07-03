@@ -18,6 +18,8 @@ const labels = {
     'Anes': 'ANA'
 };
 
+const roleOrder = ['Duty', 'Pre', 'Ord', 'Off', 'Rest', 'Anes'];
+
 // --- COLOR ENGINE ---
 const colorPresets = {
     'pastel': { 'Duty': { bg: '#ffe4e6', text: '#be123c' }, 'Pre': { bg: '#ffedd5', text: '#ea580c' }, 'Ord': { bg: '#e0f2fe', text: '#0369a1' }, 'Off': { bg: '#f1f5f9', text: '#64748b' }, 'Rest': { bg: '#ccfbf1', text: '#0f766e' }, 'Anes': { bg: '#f3e8ff', text: '#7e22ce' } },
@@ -149,13 +151,9 @@ function resetCard(id, mainText, hasContent, expandHtml = "") {
     }
 }
 
-function formatPhones(phoneStr) {
-    if (!phoneStr) return '';
-    const phones = phoneStr.split('/');
-    return phones.map(p => {
-        let clean = p.trim();
-        return `📞 <a href="tel:${clean.replace(/[^0-9]/g, '')}" class="font-bold text-white hover:underline">${clean}</a>`;
-    }).join('<br>');
+function formatPhoneLink(phoneStr) {
+    const clean = phoneStr.replace(/[^0-9]/g, '');
+    return `<a href="tel:${clean}" class="font-bold text-white hover:underline">${phoneStr}</a>`;
 }
 
 // --- DASHBOARD (BIG TODAY) ---
@@ -197,16 +195,41 @@ function updateDashboard() {
         card.style.color = c.text;
         roleTitle.innerText = labels[role];
         
-        // Update the 4 House Surgeon Grid boxes above the seniors
+        // Update Mini HO Tracker
         ['A', 'B', 'C', 'D'].forEach(g => {
-            const r = rosterDay.roles[g];
-            document.getElementById(`hs-val-${g}`).innerText = labels[r];
+            document.getElementById(`hs-val-${g}`).innerText = labels[rosterDay.roles[g]];
         });
+
+        // Build the Expanded HO Card
+        let hoHtml = "";
+        roleOrder.forEach(r => {
+            let groupsInRole = ['A','B','C','D'].filter(g => rosterDay.roles[g] === r);
+            if(groupsInRole.length > 0) {
+                hoHtml += `<div class="mb-3 last:mb-0">`;
+                hoHtml += `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-2 block border-b border-white/20 pb-1">${labels[r]} Team (Gp-${groupsInRole.join(', Gp-')})</span>`;
+                groupsInRole.forEach(g => {
+                    DATA.hoGroups[g].forEach(ho => {
+                        hoHtml += `
+                        <div class="mb-1.5 ml-1 flex justify-between items-center pr-2">
+                            <div class="font-bold text-[11px] sm:text-xs text-white">${ho.name}</div>
+                            <div class="text-[10px] text-white/80">📱 - ${formatPhoneLink(ho.phone)}</div>
+                        </div>`;
+                    });
+                });
+                hoHtml += `</div>`;
+            }
+        });
+        document.getElementById(`expand-ho`).innerHTML = hoHtml;
+        document.getElementById(`card-ho`).classList.add('cursor-pointer', 'hover:bg-black/20');
+        document.getElementById(`chevron-ho`).classList.remove('hidden');
+
     } else {
         card.style.backgroundColor = '#e2e8f0';
         card.style.color = '#1e293b';
         roleTitle.innerText = "Out of Range";
         ['A', 'B', 'C', 'D'].forEach(g => document.getElementById(`hs-val-${g}`).innerText = "-");
+        document.getElementById(`card-ho`).classList.remove('cursor-pointer', 'hover:bg-black/20');
+        document.getElementById(`chevron-ho`).classList.add('hidden');
     }
 
     // Populate Seniors
@@ -218,25 +241,38 @@ function updateDashboard() {
         resetCard('sas', dailyData.SAS !== "-" ? dailyData.SAS : "N/A", false);
 
         // AS (Has Full Name + Ward Round info)
-        let asHasInfo = !!(dailyData.AS_full || dailyData.WR);
+        let asHasInfo = false;
         let asHtml = "";
-        if (dailyData.AS_full) {
-            asHtml += `<span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Full Team:</span><div class="space-y-1.5 mb-2">${dailyData.AS_full}</div>`;
+        let shortAs = "N/A";
+        
+        if (dailyData.AS && dailyData.AS !== "N/A" && DATA.asGroups[dailyData.AS]) {
+            asHasInfo = true;
+            shortAs = dailyData.AS;
+            asHtml += `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-2 block border-b border-white/20 pb-1">Duty Team - ${dailyData.AS}</span>`;
+            DATA.asGroups[dailyData.AS].forEach(asDoc => {
+                asHtml += `
+                <div class="mb-2 ml-1 flex justify-between items-center pr-2">
+                    <div class="font-bold text-[11px] sm:text-xs text-white">AS ${asDoc.name}</div>
+                    <div class="text-[10px] text-white/80">📱 - ${formatPhoneLink(asDoc.phone)}</div>
+                </div>`;
+            });
         }
+
         if (dailyData.WR) {
-            asHtml += `<div class="mt-2 pt-2 border-t border-white/10">
-                <span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Ward Round Duty:</span>
-                <div class="flex flex-col gap-0.5 text-xs">
+            asHasInfo = true;
+            asHtml += `<div class="mt-3 pt-2 border-t border-white/10">
+                <span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-1.5 block">Ward Round Duty:</span>
+                <div class="flex flex-col gap-1 text-[11px] sm:text-xs ml-1">
                     <span>Post-op: <span class="font-bold">${dailyData.WR.postop}</span></span>
                     <span>PN: <span class="font-bold">${dailyData.WR.pn}</span></span>
                 </div>
             </div>`;
         }
-        resetCard('as', dailyData.AS_short, asHasInfo, asHtml);
+        resetCard('as', shortAs, asHasInfo, asHtml);
 
         // Medical OnCall
         let medHasInfo = !!dailyData.Med_phone;
-        let medHtml = dailyData.Med_phone ? `<span class="font-bold uppercase tracking-wider text-[9px] text-white/60 mb-1 block">Contact:</span>` + formatPhones(dailyData.Med_phone) : "";
+        let medHtml = dailyData.Med_phone ? `<span class="font-bold uppercase tracking-wider text-[10px] text-white/80 mb-1.5 block border-b border-white/20 pb-1">Contact Details:</span><div class="ml-1 text-[11px] sm:text-xs">📱 - ${formatPhoneLink(dailyData.Med_phone)}</div>` : "";
         resetCard('med', dailyData.Med_name || "N/A", medHasInfo, medHtml);
 
     } else {
@@ -313,19 +349,29 @@ function renderDirectory() {
     let html = '';
     
     DATA.directory.forEach(section => {
-        html += `
-            <div>
-                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">${section.category}</h4>
-                <div class="space-y-2">
-                    ${section.contacts.map(c => `
-                        <div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
+        html += `<div><h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">${section.category}</h4><div class="space-y-2">`;
+        
+        if (section.subgroups) {
+            section.subgroups.forEach(sub => {
+                html += `<div class="bg-slate-50 p-3 rounded-xl border border-slate-100 mb-3">
+                            <h5 class="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2 border-b border-indigo-100 pb-1">${sub.name}</h5>
+                            <div class="space-y-2">`;
+                sub.contacts.forEach(c => {
+                    html += `<div class="flex justify-between items-center">
+                                <span class="font-bold text-slate-700 text-xs">${c.name}</span>
+                                ${c.phone ? `<a href="tel:${c.phone.replace(/[^0-9]/g, '')}" class="font-bold text-indigo-600 text-[10px] sm:text-xs bg-white px-2 py-1 rounded shadow-sm">📱 ${c.phone}</a>` : ''}
+                             </div>`;
+                });
+                html += `</div></div>`;
+            });
+        } else {
+            section.contacts.forEach(c => {
+                html += `<div class="flex justify-between items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
                             <span class="font-bold text-slate-700 text-sm">${c.name}</span>
-                            ${c.phone ? `<a href="tel:${c.phone.replace(/[^0-9]/g, '')}" class="font-bold text-indigo-600 text-[10px] sm:text-xs bg-indigo-50 px-2 py-1 rounded-lg break-all ml-2">${c.phone}</a>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
+                         </div>`;
+            });
+        }
+        html += `</div></div>`;
     });
     
     container.innerHTML = html;
@@ -400,7 +446,7 @@ function buildTableCardHTML(stats, title) {
                         const isActive = (g === userGroup);
                         return `
                         <tr class="transition-colors hover:bg-slate-50 border-b border-slate-50 ${isActive ? 'bg-indigo-50/30' : ''}">
-                            <td class="py-2 px-1 text-[11px] ${isActive ? 'font-bold text-slate-800' : 'font-semibold text-slate-500'}">Grp ${g}</td>
+                            <td class="py-2 px-1 text-[11px] ${isActive ? 'font-bold text-slate-800' : 'font-semibold text-slate-500'}">Gp ${g}</td>
                             <td class="py-2 px-1 text-[11px] text-center font-bold" style="color: ${theme['Duty'].text === '#ffffff' ? theme['Duty'].bg : theme['Duty'].text}">${stats[g].D}</td>
                             <td class="py-2 px-1 text-[11px] text-center font-bold" style="color: ${theme['Off'].text === '#ffffff' ? theme['Off'].bg : theme['Off'].text}">${stats[g].N}</td>
                             <td class="py-2 px-1 text-[11px] text-center font-bold" style="color: ${theme['Pre'].text === '#ffffff' ? theme['Pre'].bg : theme['Pre'].text}">${stats[g].P}</td>
